@@ -34,13 +34,15 @@ class ArticleController extends AbstractController
         $page = $request->query->getInt('page', 1);
         $limit = $request->query->getInt('limit', 10);
 
-        // Fetch database with filter: status and date
+        // Fetch articles database with filter: status and date
         $repository = $this->entityManager->getRepository(Article::class);
         $qb = $repository->createQueryBuilder('a');
+        // http://127.0.0.1:8000/articles?status=active
         if ($status) {
             $qb->andWhere('a.status = :status')
                 ->setParameter('status', $status);
         }
+        //http://127.0.0.1:8000/articles?date
         if ($date) {
             $qb->andWhere('DATE(a.publicationDate) = :date')
                 ->setParameter('date', $date);
@@ -51,6 +53,7 @@ class ArticleController extends AbstractController
         $articles = $qb->getQuery()->getResult();
 
         $format = $request->query->get('format', 'json');
+        // http://127.0.0.1:8000/articles?format=xml or csv
         switch ($format) {
             case 'xml':
                 $data = $this->serializer->serialize($articles, 'xml');
