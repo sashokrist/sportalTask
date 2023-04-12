@@ -4,13 +4,13 @@
 
 
 # Route for displaying all active articles
-article_list:
-  path: /articles
-  controller: App\Controller\ArticleController::index
-  methods: GET
+#article_list:
+#path: /articles
+#controller: App\Controller\ArticleController::index
+#methods: GET
 
 # Route for creating a new article
-article_create:
-  path: /articles
-  controller: App\Controller\ArticleController::create
-  methods: POST
+#article_create:
+#path: /articles
+#controller: App\Controller\ArticleController::create
+#methods: POST

@@ -27,6 +27,3 @@ class ArticleType extends AbstractType
         ]);
     }
 }
-// $builder->add('token', HiddenType::class, [
-//        'mapped' => false, // This field is not mapped to any property in the Article entity
-//    ]);
