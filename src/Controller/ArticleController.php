@@ -2,17 +2,27 @@
 
 namespace App\Controller;
 
-// src/Controller/ArticleController.php
-
+use App\Repository\ArticleRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use App\Entity\Article;
 use App\Form\ArticleType;
+use Symfony\Component\Serializer\SerializerInterface;
 
 class ArticleController extends AbstractController
 {
+    private $entityManager;
+    private $serializer;
+
+    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer)
+    {
+        $this->entityManager = $entityManager;
+        $this->serializer = $serializer;
+    }
+
     /**
      * @Route("/articles", name="article_list", methods={"GET"})
      */
@@ -24,8 +34,8 @@ class ArticleController extends AbstractController
         $page = $request->query->getInt('page', 1);
         $limit = $request->query->getInt('limit', 10);
 
-        // Fetch articles from the database with optional filtering by status and date
-        $repository = $this->getDoctrine()->getRepository(Article::class);
+        // Fetch database with filter: status and date
+        $repository = $this->entityManager->getRepository(Article::class);
         $qb = $repository->createQueryBuilder('a');
         if ($status) {
             $qb->andWhere('a.status = :status')
@@ -40,21 +50,20 @@ class ArticleController extends AbstractController
         $qb->setMaxResults($limit);
         $articles = $qb->getQuery()->getResult();
 
-        // Serialize the articles to the requested format (json, xml, csv)
         $format = $request->query->get('format', 'json');
         switch ($format) {
             case 'xml':
-                $data = $this->get('serializer')->serialize($articles, 'xml');
+                $data = $this->serializer->serialize($articles, 'xml');
                 $response = new Response($data);
                 $response->headers->set('Content-Type', 'application/xml');
                 break;
             case 'csv':
-                $data = $this->get('serializer')->serialize($articles, 'csv');
+                $data = $this->serializer->serialize($articles, 'csv');
                 $response = new Response($data);
                 $response->headers->set('Content-Type', 'text/csv');
                 break;
             default:
-                $data = $this->get('serializer')->normalize($articles);
+                $data = $this->serializer->normalize($articles);
                 $response = $this->json($data);
                 break;
         }
@@ -67,31 +76,21 @@ class ArticleController extends AbstractController
      */
     public function create(Request $request): Response
     {
-        // Create a new Article object
         $article = new Article();
-
-        // Create a form to handle the article data
-        $form = $this->createForm(ArticleType::class, $article);
-
-        // Submit the form with the request data
+        $form = $this->createForm(ArticleType::class, $article, array('csrf_protection' => false));
         $form->submit($request->request->all());
 
-        // Validate the form
         if ($form->isValid()) {
-            // Set the creation date
             $article->setCreatedAt(new \DateTimeImmutable());
+            $article->setPublicationDate(new \DateTimeImmutable());
 
-            // Persist the article to the database
-            $entityManager = $this->getDoctrine()->getManager();
-            $entityManager->persist($article);
-            $entityManager->flush();
+            $this->entityManager->persist($article);
+            $this->entityManager->flush();
 
-            // Return a success response
             return $this->json(['message' => 'Article created successfully'], Response::HTTP_CREATED);
-        } else {
-            // Return a validation error response
-            $errors = $this->get('serializer')->normalize($form->getErrors(true));
-            return $this->json($errors, Response::HTTP_BAD_REQUEST);
         }
+
+        $errors = $this->serializer->normalize($form->getErrors(true));
+        return $this->json($errors, Response::HTTP_BAD_REQUEST);
     }
 }
