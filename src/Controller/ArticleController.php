@@ -2,25 +2,25 @@
 
 namespace App\Controller;
 
+use App\Entity\Article;
+use App\Form\ArticleType;
 use App\Repository\ArticleRepository;
+use App\Service\ArticleSerializer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use App\Entity\Article;
-use App\Form\ArticleType;
-use Symfony\Component\Serializer\SerializerInterface;
 
 class ArticleController extends AbstractController
 {
     private $entityManager;
-    private $serializer;
+    private $articleSerializer;
 
-    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer)
+    public function __construct(EntityManagerInterface $entityManager, ArticleSerializer $articleSerializer)
     {
         $this->entityManager = $entityManager;
-        $this->serializer = $serializer;
+        $this->articleSerializer = $articleSerializer;
     }
 
     /**
@@ -28,64 +28,31 @@ class ArticleController extends AbstractController
      */
     public function index(Request $request): Response
     {
-        // Get query parameters for filtering and pagination
-        $status = $request->query->get('status');
-        $date = $request->query->get('date');
+        $status = $request->get('status');
+        $date = $request->get('date');
         $page = $request->query->getInt('page', 1);
         $limit = $request->query->getInt('limit', 10);
 
-        // Fetch articles database with filter: status and date
         $repository = $this->entityManager->getRepository(Article::class);
-        $qb = $repository->createQueryBuilder('a');
-        // http://127.0.0.1:8000/articles?status=active
-        if ($status) {
-            $qb->andWhere('a.status = :status')
-                ->setParameter('status', $status);
-        }
-        //http://127.0.0.1:8000/articles?date
-        if ($date) {
-            $qb->andWhere('DATE(a.publicationDate) = :date')
-                ->setParameter('date', $date);
-        }
-        $qb->orderBy('a.createdAt', 'DESC');
-        $qb->setFirstResult(($page - 1) * $limit);
-        $qb->setMaxResults($limit);
-        $articles = $qb->getQuery()->getResult();
+        $articles = $repository->findByFilters($status, $date, $page, $limit);
 
-        $format = $request->query->get('format', 'json');
-        // http://127.0.0.1:8000/articles?format=xml or csv
-        switch ($format) {
-            case 'xml':
-                $data = $this->serializer->serialize($articles, 'xml');
-                $response = new Response($data);
-                $response->headers->set('Content-Type', 'application/xml');
-                break;
-            case 'csv':
-                $data = $this->serializer->serialize($articles, 'csv');
-                $response = new Response($data);
-                $response->headers->set('Content-Type', 'text/csv');
-                break;
-            default:
-                $data = $this->serializer->normalize($articles);
-                $response = $this->json($data);
-                break;
-        }
+        $format = $request->get('format', 'json');
 
-        return $response;
+        return $this->articleSerializer->serializeArticles($articles, $format);
     }
 
     /**
      * @Route("/articles", name="article_create", methods={"POST"})
      */
-    public function create(Request $request): Response
+    public function create(Request $request, ArticleRepository $repository): Response
     {
         $article = new Article();
-        $form = $this->createForm(ArticleType::class, $article, array('csrf_protection' => false));
+        $form = $this->createForm(ArticleType::class, $article, ['csrf_protection' => false]);
         $form->submit($request->request->all());
 
         if ($form->isValid()) {
-            $article->setCreatedAt(new \DateTimeImmutable());
-            $article->setPublicationDate(new \DateTimeImmutable());
+            $article->setCreatedAt(new \DateTime());
+            $article->setPublicationDate(new \DateTime());
 
             $this->entityManager->persist($article);
             $this->entityManager->flush();
@@ -94,6 +61,7 @@ class ArticleController extends AbstractController
         }
 
         $errors = $this->serializer->normalize($form->getErrors(true));
+
         return $this->json($errors, Response::HTTP_BAD_REQUEST);
     }
 }

@@ -39,6 +39,27 @@ class ArticleRepository extends ServiceEntityRepository
         }
     }
 
+    public function findByFilters($status, $date, $page, $limit)
+    {
+        $qb = $this->createQueryBuilder('a');
+
+        if ($status) {
+            $qb->andWhere('a.status = :status')
+                ->setParameter('status', $status);
+        }
+
+        if ($date) {
+            $qb->andWhere('DATE(a.publicationDate) = :date')
+                ->setParameter('date', $date);
+        }
+
+        $qb->orderBy('a.createdAt', 'DESC');
+        $qb->setFirstResult(($page - 1) * $limit);
+        $qb->setMaxResults($limit);
+
+        return $qb->getQuery()->getResult();
+    }
+
 //    /**
 //     * @return Article[] Returns an array of Article objects
 //     */

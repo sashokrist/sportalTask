@@ -15,10 +15,10 @@ class Article
     private ?int $id = null;
 
     #[ORM\Column(nullable: true)]
-    private ?\DateTimeImmutable $createdAt = null;
+    private ?\DateTime $createdAt = null;
 
     #[ORM\Column(nullable: true)]
-    private ?\DateTimeImmutable $publicationDate = null;
+    private ?\DateTime $publicationDate = null;
 
     #[ORM\Column(length: 255)]
     private ?string $title = null;
@@ -34,24 +34,24 @@ class Article
         return $this->id;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?\DateTime
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(?\DateTimeImmutable $createdAt): self
+    public function setCreatedAt(?\DateTime $createdAt): self
     {
         $this->createdAt = $createdAt;
 
         return $this;
     }
 
-    public function getPublicationDate(): ?\DateTimeImmutable
+    public function getPublicationDate(): ?\DateTime
     {
         return $this->publicationDate;
     }
 
-    public function setPublicationDate(?\DateTimeImmutable $publicationDate): self
+    public function setPublicationDate(?\DateTime $publicationDate): self
     {
         $this->publicationDate = $publicationDate;
 
